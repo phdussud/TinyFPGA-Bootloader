@@ -1,11 +1,10 @@
 module usb_fs_tx (
-  // A 48MHz clock is required to receive USB data at 12MHz
-  // it's simpler to juse use 48MHz everywhere
-  input clk_48mhz,
+  // A 48MHz or 60MHzclock is required to send USB data at 12MHz
+  input clk_usb,
   input clk,
   input reset,
 
-  // bit strobe from rx to align with senders clock (in clk_48mhz domain)
+  // bit strobe from rx to align with senders clock (in clk_usb domain)
   input bit_strobe,
 
   // output enable to take ownership of bus and data out
@@ -27,30 +26,30 @@ module usb_fs_tx (
   output tx_data_get,
   input [7:0] tx_data
 );
-  // convert pkt_start to clk_48mhz domain
+  // convert pkt_start to clk_usb domain
   // save packet parameters at pkt_start
-  wire pkt_start_48;
+  wire pkt_start_usb;
   wire [3:0] pidq;
   strobe #(.WIDTH(4)) pkt_start_strobe(
-	clk, clk_48mhz,
-	pkt_start, pkt_start_48,
+	clk, clk_usb,
+	pkt_start, pkt_start_usb,
 	pid, pidq
   );
 
-  wire tx_data_avail_48;
-  dflip tx_data_avail_buffer(clk_48mhz, tx_data_avail, tx_data_avail_48);
-  //wire tx_data_avail_48 = tx_data_avail;
+  wire tx_data_avail_usb;
+  dflip tx_data_avail_buffer(clk_usb, tx_data_avail, tx_data_avail_usb);
+  //wire tx_data_avail_usb = tx_data_avail;
 
   // convert tx_data_get from 48 to clk
-  //wire tx_data_get_48 = tx_data_get;
-  reg tx_data_get_48;
+  //wire tx_data_get_usb = tx_data_get;
+  reg tx_data_get_usb;
   initial begin
-    tx_data_get_48 = 0;
+    tx_data_get_usb = 0;
   end
   strobe tx_data_get_strobe(
-	.clk_in(clk_48mhz),
+	.clk_in(clk_usb),
 	.clk_out(clk),
-	.strobe_in(tx_data_get_48),
+	.strobe_in(tx_data_get_usb),
 	.strobe_out(tx_data_get)
   );
 
@@ -71,24 +70,23 @@ module usb_fs_tx (
   reg [4:0] bit_history_q = 0;
   wire [5:0] bit_history = {serial_tx_data, bit_history_q};
   wire bitstuff = bit_history == 6'b111111;
-  reg bitstuff_q = 0;
-  reg bitstuff_qq = 0;
-  reg bitstuff_qqq = 0;
-  reg bitstuff_qqqq = 0;
+  //delay the bitstuff signal by one bit_strobe
+  reg bitstuff_bit_delay;
 
+  always @(posedge clk_usb) begin
+    if (reset) begin 
+      bitstuff_bit_delay <= 0;
+    end else begin 
+      bitstuff_bit_delay <= bit_strobe ? bitstuff : bitstuff_bit_delay;
+    end
 
-  always @(posedge clk_48mhz) begin
-    bitstuff_q <= bitstuff;
-    bitstuff_qq <= bitstuff_q;
-    bitstuff_qqq <= bitstuff_qq;
-    bitstuff_qqqq <= bitstuff_qqq;
   end
 
-  wire pkt_end_48 = bit_strobe && se0_shift_reg[1:0] == 2'b01;
+  wire pkt_end_usb = bit_strobe && se0_shift_reg[1:0] == 2'b01;
   strobe pkt_end_strobe(
-	.clk_in(clk_48mhz),
+	.clk_in(clk_usb),
 	.clk_out(clk),
-	.strobe_in(pkt_end_48),
+	.strobe_in(pkt_end_usb),
 	.strobe_out(pkt_end)
   );
 
@@ -104,10 +102,10 @@ module usb_fs_tx (
 
   reg [15:0] crc16 = 0;
 
-  always @(posedge clk_48mhz) begin
+  always @(posedge clk_usb) begin
     case (pkt_state)
       IDLE : begin
-        if (pkt_start_48) begin
+        if (pkt_start_usb) begin
           pkt_state <= SYNC;
         end
       end
@@ -137,23 +135,23 @@ module usb_fs_tx (
 
       DATA_OR_CRC16_0 : begin
         if (byte_strobe) begin
-          if (tx_data_avail_48) begin
+          if (tx_data_avail_usb) begin
             pkt_state <= DATA_OR_CRC16_0;
             data_payload <= 1;
-            tx_data_get_48 <= 1;
+            tx_data_get_usb <= 1;
             data_shift_reg <= tx_data;
             oe_shift_reg <= 8'b11111111;
             se0_shift_reg <= 8'b00000000;
           end else begin
             pkt_state <= CRC16_1;
             data_payload <= 0;
-            tx_data_get_48 <= 0;
+            tx_data_get_usb <= 0;
             data_shift_reg <= ~{crc16[8], crc16[9], crc16[10], crc16[11], crc16[12], crc16[13], crc16[14], crc16[15]};
             oe_shift_reg <= 8'b11111111;
             se0_shift_reg <= 8'b00000000;
           end
         end else begin
-          tx_data_get_48 <= 0; 
+          tx_data_get_usb <= 0; 
         end
       end
 
@@ -181,7 +179,7 @@ module usb_fs_tx (
       byte_strobe <= 0;
     end
 
-    if (pkt_start_48) begin
+    if (pkt_start_usb) begin
       bit_count <= 1;
       bit_history_q <= 0;
 
@@ -209,12 +207,12 @@ module usb_fs_tx (
   // calculate crc16
   wire crc16_invert = serial_tx_data ^ crc16[15];  
 
-  always @(posedge clk_48mhz) begin
-    if (pkt_start_48) begin
+  always @(posedge clk_usb) begin
+    if (pkt_start_usb) begin
       crc16 <= 16'b1111111111111111;
     end
 
-    if (bit_strobe && data_payload && !bitstuff_qqqq && !pkt_start_48) begin
+    if (bit_strobe && data_payload && !bitstuff_bit_delay && !pkt_start_usb) begin
       crc16[15] <= crc16[14] ^ crc16_invert;
       crc16[14] <= crc16[13];
       crc16[13] <= crc16[12];
@@ -238,8 +236,8 @@ module usb_fs_tx (
 
 
   // nrzi and differential driving
-  always @(posedge clk_48mhz) begin
-    if (pkt_start_48) begin
+  always @(posedge clk_usb) begin
+    if (pkt_start_usb) begin
       // J
       dp <= 1;
       dn <= 0;

@@ -1,5 +1,7 @@
-module tinyfpga_bootloader (
-  input  clk_48mhz,
+module tinyfpga_bootloader #(
+  parameter USB_CLOCK_MULT = 4 //4->48MHz, 5->60MHz
+) (
+  input  clk_usb,
   input  clk,
   input  reset,
 
@@ -27,7 +29,7 @@ module tinyfpga_bootloader (
   // function.
   output boot
 );
- 
+
   ////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////
   ////////
@@ -39,8 +41,8 @@ module tinyfpga_bootloader (
   reg [7:0] pwm_cnt = 0;
   
   reg [5:0] ns_cnt = 0;
-  wire ns_rst = (ns_cnt == 48);
-  always @(posedge clk) begin
+  wire ns_rst = (ns_cnt == USB_CLOCK_MULT*12);
+  always @(posedge clk_usb) begin
     if (ns_rst) begin
       ns_cnt <= 0;
     end else begin
@@ -50,7 +52,7 @@ module tinyfpga_bootloader (
   
   reg [9:0] us_cnt = 0;
   wire us_rst = (us_cnt == 1000);
-  always @(posedge clk) begin
+  always @(posedge clk_usb) begin
     if (us_rst) begin
       us_cnt <= 0;
     end else if (ns_rst) begin
@@ -59,7 +61,7 @@ module tinyfpga_bootloader (
   end
   
   reg count_down = 0;
-  always @(posedge clk) begin
+  always @(posedge clk_usb) begin
     if (us_rst) begin
       if (count_down) begin 
         if (led_pwm == 0) begin
@@ -76,7 +78,7 @@ module tinyfpga_bootloader (
       end
     end
   end
-  always @(posedge clk) pwm_cnt <= pwm_cnt + 1'b1; 
+  always @(posedge clk_usb) pwm_cnt <= pwm_cnt + 1'b1; 
   assign led = led_pwm > pwm_cnt;  
 
 
@@ -202,10 +204,11 @@ module tinyfpga_bootloader (
   wire nak_in_ep_acked;
 
   usb_fs_pe #(
+    .USB_CLOCK_MULT(USB_CLOCK_MULT),
     .NUM_OUT_EPS(5'd2),
     .NUM_IN_EPS(5'd3)
   ) usb_fs_pe_inst (
-    .clk_48mhz(clk_48mhz),
+    .clk_usb(clk_usb),
     .clk(clk),
     .reset(reset),
 

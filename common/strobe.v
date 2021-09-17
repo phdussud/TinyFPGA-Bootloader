@@ -1,4 +1,6 @@
-module strobe(
+`timescale 1ns/1ps
+
+module strobe (
 	input clk_in,
 	input clk_out,
 	input strobe_in,
@@ -12,40 +14,47 @@ module strobe(
 `define CLOCK_CROSS
 `ifdef CLOCK_CROSS
 	reg flag;
-	reg prev_strobe;
 	reg [DELAY:0] sync;
 	reg [WIDTH-1:0] data;
+	reg data_valid_sync;
+	reg reg_strobe_out;
+	reg [WIDTH-1:0] reg_data_out;
 
 	initial begin
 		flag = 0;
-		prev_strobe = 0;
 		sync[DELAY:0] = 0;
 		data[WIDTH-1:0] = 0;
+		reg_data_out[WIDTH-1:0] = 0;
+		reg_strobe_out = 0; 
+		data_valid_sync = 0; 
 	end
 
 	// flip the flag and clock in the data when strobe is high
 	always @(posedge clk_in) begin
-		//if ((strobe_in && !prev_strobe)
-		//|| (!strobe_in &&  prev_strobe))
 		flag <= flag ^ strobe_in;
 
 		if (strobe_in)
 			data <= data_in;
 
-		prev_strobe <= strobe_in;
 	end
 
 	// shift through a chain of flipflop to ensure stability
-	always @(posedge clk_out)
+	always @(posedge clk_out) begin
 		sync <= { sync[DELAY-1:0], flag };
-
-	assign strobe_out = sync[DELAY] ^ sync[DELAY-1];
-	assign data_out = data;
+		data_valid_sync <= sync[DELAY] ^ sync[DELAY-1];
+		reg_strobe_out <= data_valid_sync;
+		if (data_valid_sync)
+			reg_data_out <= data;
+		
+	end
+	assign strobe_out = reg_strobe_out;
+	assign data_out = reg_data_out;
 `else
 	assign strobe_out = strobe_in;
 	assign data_out = data_in;
 `endif
 endmodule
+
 
 
 module dflip(

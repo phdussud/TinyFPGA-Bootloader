@@ -84,7 +84,7 @@ module bootloader (
   wire usb_tx_en;
 
   tinyfpga_bootloader tinyfpga_bootloader_inst (
-    .clk_48mhz(clk_48mhz),
+    .clk_usb(clk_48mhz),
     .reset(reset),
     .usb_p_tx(usb_p_tx),
     .usb_n_tx(usb_n_tx),

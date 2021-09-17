@@ -1,8 +1,9 @@
 module usb_fs_pe #(
   parameter [4:0] NUM_OUT_EPS = 1,
-  parameter [4:0] NUM_IN_EPS = 1
+  parameter [4:0] NUM_IN_EPS = 1,
+  parameter USB_CLOCK_MULT = 4 //4->48MHz, 5->60MHz
 ) (
-  input clk_48mhz,
+  input clk_usb,
   input clk,
   input [6:0] dev_addr,
 
@@ -186,8 +187,10 @@ module usb_fs_pe #(
     .tx_pid(out_tx_pid)
   );
 
-  usb_fs_rx usb_fs_rx_inst (
-    .clk_48mhz(clk_48mhz),
+  usb_fs_rx #(
+    .USB_CLOCK_MULT(USB_CLOCK_MULT)
+  ) usb_fs_rx_inst (
+    .clk_usb(clk_usb),
     .clk(clk),
     .reset(reset),
     .dp(usb_p_rx),
@@ -219,7 +222,7 @@ module usb_fs_pe #(
   );
 
   usb_fs_tx usb_fs_tx_inst (
-    .clk_48mhz(clk_48mhz),
+    .clk_usb(clk_usb),
     .clk(clk),
     .reset(reset),
     .bit_strobe(bit_strobe),

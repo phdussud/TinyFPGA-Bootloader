@@ -225,6 +225,17 @@ module usb_serial_ctrl_ep (
     end
   end
 
+  reg delayed_setup_stage_end = 0; 
+
+//introduce a delay for the processing of the setup request
+  always @(posedge clk) begin
+    if (reset) begin
+      delayed_setup_stage_end <= 0;
+    end else begin
+      delayed_setup_stage_end <= setup_stage_end;
+	  end
+  end
+
   always @(posedge clk) begin
     in_ep_stall <= 0;
 
