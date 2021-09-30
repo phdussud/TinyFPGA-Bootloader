@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 
-module strobe (
+module strobe #(
+	parameter WIDTH = 1,
+	parameter DELAY = 2 // 2 for metastability, larger for testing
+	) (
 	input clk_in,
 	input clk_out,
 	input strobe_in,
@@ -8,8 +11,7 @@ module strobe (
 	input [WIDTH-1:0] data_in,
 	output [WIDTH-1:0] data_out
 );
-	parameter WIDTH = 1;
-	parameter DELAY = 2; // 2 for metastability, larger for testing
+
 
 `define CLOCK_CROSS
 `ifdef CLOCK_CROSS

@@ -394,11 +394,7 @@ module usb_fs_out_pe #(
           if (!nak_out_transfer && rx_data_put && !ep_put_addr[current_endp][5]) begin
             out_data_buffer[buffer_put_addr][7:0] <= rx_data;
           end
-          
-          if (!nak_out_transfer && rx_data_put) begin
-            ep_put_addr[current_endp][5:0] <= ep_put_addr[current_endp][5:0] + 1;
-
-          end
+          ep_put_addr[current_endp][5:0] <= ep_put_addr[current_endp][5:0] + ((!nak_out_transfer && rx_data_put) ? 1 :0);
         end
 
         RCVD_DATA_END : begin

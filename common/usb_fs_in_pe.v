@@ -379,9 +379,7 @@ module usb_fs_in_pe #(
         end
 
         SEND_DATA : begin
-          if (tx_data_get && tx_data_avail_i) begin
-            ep_get_addr[current_endp][5:0] <= ep_get_addr[current_endp][5:0] + 1;
-          end
+            ep_get_addr[current_endp][5:0] <= ep_get_addr[current_endp][5:0] + ((tx_data_get && tx_data_avail_i) ? 1 : 0);
         end
 
         WAIT_ACK : begin
