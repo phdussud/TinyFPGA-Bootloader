@@ -1,0 +1,22 @@
+################################################
+# This section describes SDC language elements for timing-driven
+# synthesis that are supported by the Lattice Synthesis Engine (LSE).
+#
+# The constraints here will be translated to corresponding
+# timing Preference (Preferences are implementation constraints
+# for assigning design logic to physical resources) for back-end flow.
+################################################
+
+create_clock -period 16.666660 -waveform { 0.000000 8.333330 } -name clk_60mhz [ get_nets { clk_60mhz } ]
+create_clock -period 40.0      -waveform { 0.000000 20.00000 } -name clk_25mhz [ get_nets { clk_25mhz } ]
+set_false_path -from [get_clocks clk_60mhz] -to [get_clocks clk_25mhz]
+set_false_path -from [get_clocks clk_25mhz] -to [get_clocks clk_60mhz]
+
+################################################
+# This section describes the HDL Attributes that are supported
+# by the Lattice Synthesis Engine (LSE).
+#
+# These attributes are directly interpreted by the engine and
+# influence the optimization or structure of the output netlist.
+################################################
+

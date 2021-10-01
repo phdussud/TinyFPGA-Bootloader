@@ -55,12 +55,14 @@ module usb_serial_ctrl_ep (
 
   assign out_ep_req = out_ep_data_avail;
   assign out_ep_data_get = out_ep_data_avail;
-  reg out_ep_data_valid = 0;
-  always @(posedge clk) out_ep_data_valid <= out_ep_data_avail && out_ep_grant;
-
+  reg out_ep_data_valid;
+  always @(posedge clk) begin 
+    if (reset) out_ep_data_valid <= 0;
+    out_ep_data_valid <= out_ep_data_avail && out_ep_grant;
+  end
   // need to record the setup data
   reg [3:0] setup_data_addr;
-  reg [9:0] raw_setup_data [7:0];
+  reg [7:0] raw_setup_data [7:0];
 
   wire [7:0] bmRequestType = raw_setup_data[0];
   wire [7:0] bRequest = raw_setup_data[1];
@@ -80,7 +82,7 @@ module usb_serial_ctrl_ep (
 
   falling_edge_detector detect_pkt_end (
     .clk(clk),
-    .in(out_ep_data_avail),
+    .in(out_ep_data_valid),
     .out(pkt_end)
   );
 
@@ -88,7 +90,8 @@ module usb_serial_ctrl_ep (
 
   wire setup_pkt_start = pkt_start && out_ep_setup;
 
-  wire has_data_stage = wLength != 16'b0000000000000000;
+  // wire has_data_stage = wLength != 16'b0000000000000000; // this version for some reason causes a 16b carry which is slow
+  wire has_data_stage = |wLength;
 
   wire out_data_stage;
   assign out_data_stage = has_data_stage && !bmRequestType[7];
@@ -99,9 +102,11 @@ module usb_serial_ctrl_ep (
   reg [7:0] bytes_sent = 0;
   reg [6:0] rom_length = 0;
 
-  wire all_data_sent = 
+  wire wLength_is_large = |wLength[15:7]; // 15-7 bits because rom_length is only 7 bits wide
+
+  wire all_data_sent =
     (bytes_sent >= rom_length) ||
-    (bytes_sent >= wLength);
+    (!wLength_is_large && bytes_sent >= wLength[7:0]); // if the requested wLength is large, we only send rom_length bytes
 
   wire more_data_to_send =
     !all_data_sent;
@@ -131,88 +136,88 @@ module usb_serial_ctrl_ep (
 
 
   always @* begin
-    setup_stage_end <= 0;
-    data_stage_end <= 0;
-    status_stage_end <= 0;
-    send_zero_length_data_pkt <= 0;
+    setup_stage_end = 0;
+    data_stage_end = 0;
+    status_stage_end = 0;
+    send_zero_length_data_pkt = 0;
 
     case (ctrl_xfr_state)
       IDLE : begin
         if (setup_pkt_start) begin
-          ctrl_xfr_state_next <= SETUP;
+          ctrl_xfr_state_next = SETUP;
         end else begin
-          ctrl_xfr_state_next <= IDLE;
+          ctrl_xfr_state_next = IDLE;
         end
       end
 
       SETUP : begin
         if (pkt_end) begin
-          setup_stage_end <= 1;
+          setup_stage_end = 1;
 
           if (in_data_stage) begin
-            ctrl_xfr_state_next <= DATA_IN;
+            ctrl_xfr_state_next = DATA_IN;
 
           end else if (out_data_stage) begin
-            ctrl_xfr_state_next <= DATA_OUT;
+            ctrl_xfr_state_next = DATA_OUT;
 
           end else begin
-            ctrl_xfr_state_next <= STATUS_IN;
-            send_zero_length_data_pkt <= 1;
+            ctrl_xfr_state_next = STATUS_IN;
+            send_zero_length_data_pkt = 1;
           end
 
         end else begin
-          ctrl_xfr_state_next <= SETUP;
+          ctrl_xfr_state_next = SETUP;
         end
       end
 
       DATA_IN : begin
 	if (in_ep_stall) begin
-          ctrl_xfr_state_next <= IDLE;
-          data_stage_end <= 1;
-          status_stage_end <= 1;
+          ctrl_xfr_state_next = IDLE;
+          data_stage_end = 1;
+          status_stage_end = 1;
 
 	end else if (in_ep_acked && all_data_sent) begin
-          ctrl_xfr_state_next <= STATUS_OUT;
-          data_stage_end <= 1;
+          ctrl_xfr_state_next = STATUS_OUT;
+          data_stage_end = 1;
 
         end else begin
-          ctrl_xfr_state_next <= DATA_IN;
+          ctrl_xfr_state_next = DATA_IN;
         end
       end
 
       DATA_OUT : begin
         if (out_ep_acked) begin
-          ctrl_xfr_state_next <= STATUS_IN;
-          send_zero_length_data_pkt <= 1;
-          data_stage_end <= 1;
-          
+          ctrl_xfr_state_next = STATUS_IN;
+          send_zero_length_data_pkt = 1;
+          data_stage_end = 1;
+
         end else begin
-          ctrl_xfr_state_next <= DATA_OUT;
+          ctrl_xfr_state_next = DATA_OUT;
         end
       end
 
       STATUS_IN : begin
         if (in_ep_acked) begin
-          ctrl_xfr_state_next <= IDLE;
-          status_stage_end <= 1;
-          
+          ctrl_xfr_state_next = IDLE;
+          status_stage_end = 1;
+
         end else begin
-          ctrl_xfr_state_next <= STATUS_IN;
+          ctrl_xfr_state_next = STATUS_IN;
         end
       end
 
       STATUS_OUT: begin
         if (out_ep_acked) begin
-          ctrl_xfr_state_next <= IDLE;
-          status_stage_end <= 1;
-          
+          ctrl_xfr_state_next = IDLE;
+          status_stage_end = 1;
+
         end else begin
-          ctrl_xfr_state_next <= STATUS_OUT;
+          ctrl_xfr_state_next = STATUS_OUT;
         end
       end
 
       default begin
-        ctrl_xfr_state_next <= IDLE;
+        ctrl_xfr_state_next = IDLE;
       end
     endcase
   end
@@ -225,14 +230,14 @@ module usb_serial_ctrl_ep (
     end
   end
 
-  reg delayed_setup_stage_end = 0; 
+  reg delayed_setup_stage = 0;
 
 //introduce a delay for the processing of the setup request
   always @(posedge clk) begin
     if (reset) begin
-      delayed_setup_stage_end <= 0;
+      delayed_setup_stage <= 0;
     end else begin
-      delayed_setup_stage_end <= setup_stage_end;
+      delayed_setup_stage <= setup_stage_end;
 	  end
   end
 
@@ -241,26 +246,33 @@ module usb_serial_ctrl_ep (
 
     if (out_ep_setup && out_ep_data_valid) begin
       raw_setup_data[setup_data_addr] <= out_ep_data;
-      setup_data_addr <= setup_data_addr + 1;
+      setup_data_addr <= setup_data_addr + 1'b1;
     end
 
-    if (setup_stage_end) begin
+    if (delayed_setup_stage) begin
       case (bRequest)
         'h06 : begin
           // GET_DESCRIPTOR
-          case (wValue[15:8]) 
+          case (wValue[15:8])
             1 : begin
               // DEVICE
-              rom_addr    <= 'h00; 
+              rom_addr    <= 'h00;
               rom_length  <= 'h12;
-            end 
+            end
 
             2 : begin
               // CONFIGURATION
-              rom_addr    <= 'h12; 
+              rom_addr    <= 'h12;
               rom_length  <= 'h43;
-            end 
-            
+            end
+
+            3 : begin
+              // STRING
+              in_ep_stall <= 1;
+              rom_addr    <= 'h00;
+              rom_length  <= 'h00;
+            end
+
             6 : begin
               // DEVICE_QUALIFIER
               in_ep_stall <= 1;
@@ -268,6 +280,12 @@ module usb_serial_ctrl_ep (
               rom_length <= 'h00;
             end
             
+            default : begin
+              in_ep_stall <= 1;
+              rom_addr   <= 'h00;
+              rom_length <= 'h00;
+            end
+
           endcase
         end
 
@@ -280,7 +298,7 @@ module usb_serial_ctrl_ep (
           // this is because the status stage token will still be using
           // the old device address
           save_dev_addr <= 1;
-          new_dev_addr <= wValue[6:0]; 
+          new_dev_addr <= wValue[6:0];
         end
 
         'h09 : begin
@@ -321,20 +339,20 @@ module usb_serial_ctrl_ep (
     end
 
     if (ctrl_xfr_state == DATA_IN && more_data_to_send && in_ep_grant && in_ep_data_free) begin
-      rom_addr <= rom_addr + 1;
-      bytes_sent <= bytes_sent + 1;
+      rom_addr <= rom_addr + 1'b1;
+      bytes_sent <= bytes_sent + 1'b1;
     end
 
     if (status_stage_end) begin
-      setup_data_addr <= 0;      
+      setup_data_addr <= 0;
       bytes_sent <= 0;
       rom_addr <= 0;
       rom_length <= 0;
 
       if (save_dev_addr) begin
         save_dev_addr <= 0;
-        dev_addr_i <= new_dev_addr; 
-      end 
+        dev_addr_i <= new_dev_addr;
+      end
     end
 
     if (reset) begin
