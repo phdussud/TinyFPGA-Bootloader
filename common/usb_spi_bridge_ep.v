@@ -136,73 +136,73 @@ module usb_spi_bridge_ep (
   // command sequencer
   ////////////////////////////////////////////////////////////////////////////////
   always @* begin
-    get_cmd_out_data <= 1'b0;
-    boot_to_user_design <= 1'b0;
-    spi_put_last_in_byte <= 1'b0;
-    spi_has_more_in_bytes <= 1'b0;
-    spi_dir_transition <= 1'b0;
-    spi_has_more_out_bytes <= 1'b0;
-    in_ep_data_done_i <= 1'b0;
-    spi_start_new_xfr <= 1'b0;
+    get_cmd_out_data = 1'b0;
+    boot_to_user_design = 1'b0;
+    spi_put_last_in_byte = 1'b0;
+    spi_has_more_in_bytes = 1'b0;
+    spi_dir_transition = 1'b0;
+    spi_has_more_out_bytes = 1'b0;
+    in_ep_data_done_i = 1'b0;
+    spi_start_new_xfr = 1'b0;
 
     case (cmd_state)
       CMD_IDLE : begin
-        get_cmd_out_data <= out_data_ready;
+        get_cmd_out_data = out_data_ready;
         if (out_data_valid && out_ep_data == 8'h0) begin
-          cmd_state_next <= CMD_OP_BOOT;
+          cmd_state_next = CMD_OP_BOOT;
 
         end else if (out_data_valid && out_ep_data == 8'h1) begin  
-          cmd_state_next <= CMD_SAVE_DOL_LO;    
+          cmd_state_next = CMD_SAVE_DOL_LO;    
   
         end else begin
-          cmd_state_next <= CMD_IDLE;
+          cmd_state_next = CMD_IDLE;
         end
       end
 
       CMD_OP_BOOT : begin
-        cmd_state_next <= CMD_OP_BOOT;
-        boot_to_user_design <= 1'b1;
+        cmd_state_next = CMD_OP_BOOT;
+        boot_to_user_design = 1'b1;
       end
 
       CMD_SAVE_DOL_LO : begin
-        get_cmd_out_data <= out_data_ready;
+        get_cmd_out_data = out_data_ready;
         if (out_data_valid) begin   
-          cmd_state_next <= CMD_SAVE_DOL_HI;     
+          cmd_state_next = CMD_SAVE_DOL_HI;     
   
         end else begin
-          cmd_state_next <= CMD_SAVE_DOL_LO;
+          cmd_state_next = CMD_SAVE_DOL_LO;
         end
       end
 
       CMD_SAVE_DOL_HI : begin
-        get_cmd_out_data <= out_data_ready;
+        get_cmd_out_data = out_data_ready;
         if (out_data_valid) begin   
-          cmd_state_next <= CMD_SAVE_DIL_LO;     
+          cmd_state_next = CMD_SAVE_DIL_LO;     
   
         end else begin
-          cmd_state_next <= CMD_SAVE_DOL_HI;
+          cmd_state_next = CMD_SAVE_DOL_HI;
         end
       end
 
       CMD_SAVE_DIL_LO : begin
-        get_cmd_out_data <= out_data_ready;
+        get_cmd_out_data = out_data_ready;
         if (out_data_valid) begin   
-          cmd_state_next <= CMD_SAVE_DIL_HI;     
+          cmd_state_next = CMD_SAVE_DIL_HI;     
   
         end else begin
-          cmd_state_next <= CMD_SAVE_DIL_LO;
+          cmd_state_next = CMD_SAVE_DIL_LO;
         end
       end
 
       
       CMD_SAVE_DIL_HI : begin
         if (out_data_valid) begin   
-          cmd_state_next <= CMD_DO_OUT; 
-          spi_start_new_xfr <= 1'b1;
+          cmd_state_next = CMD_DO_OUT; 
+          spi_start_new_xfr = 1'b1;
   
         end else begin
-          get_cmd_out_data <= out_data_ready;
-          cmd_state_next <= CMD_SAVE_DIL_HI;
+          get_cmd_out_data = out_data_ready;
+          cmd_state_next = CMD_SAVE_DIL_HI;
         end
       end
       
@@ -210,32 +210,32 @@ module usb_spi_bridge_ep (
       CMD_DO_OUT : begin
         if (data_out_length == 16'h0) begin
           if (data_in_length == 16'h0) begin
-            cmd_state_next <= CMD_IDLE;
+            cmd_state_next = CMD_IDLE;
           end else begin
-            cmd_state_next <= CMD_DO_IN;
-            spi_dir_transition <= 1'b1;
+            cmd_state_next = CMD_DO_IN;
+            spi_dir_transition = 1'b1;
           end
 
         end else begin
-          cmd_state_next <= CMD_DO_OUT;
-          spi_has_more_out_bytes <= 1'b1;
+          cmd_state_next = CMD_DO_OUT;
+          spi_has_more_out_bytes = 1'b1;
         end
       end
 
       CMD_DO_IN : begin
         if (data_in_length == 0) begin
-          cmd_state_next <= CMD_IDLE;
-          spi_put_last_in_byte <= 1'b1;
-          in_ep_data_done_i <= 1'b1;
+          cmd_state_next = CMD_IDLE;
+          spi_put_last_in_byte = 1'b1;
+          in_ep_data_done_i = 1'b1;
 
         end else begin
-          cmd_state_next <= CMD_DO_IN;
-          spi_has_more_in_bytes <= 1'b1;
+          cmd_state_next = CMD_DO_IN;
+          spi_has_more_in_bytes = 1'b1;
         end
       end
 
       default begin
-        cmd_state_next <= CMD_IDLE;
+        cmd_state_next = CMD_IDLE;
       end
     endcase
   end
@@ -266,106 +266,106 @@ module usb_spi_bridge_ep (
   // spi protocol engine
   ////////////////////////////////////////////////////////////////////////////////
   always @* begin
-    spi_send_bit <= 1'b0;
-    spi_get_bit <= 1'b0;
-    get_spi_out_data <= 1'b0;
-    put_spi_in_data <= 1'b0;
-    reset_spi_bit_counter <= 1'b0;
-    update_spi_byte_counters <= 1'b0;
+    spi_send_bit = 1'b0;
+    spi_get_bit = 1'b0;
+    get_spi_out_data = 1'b0;
+    put_spi_in_data = 1'b0;
+    reset_spi_bit_counter = 1'b0;
+    update_spi_byte_counters = 1'b0;
 
     case (spi_state)
       SPI_IDLE : begin
-        spi_cs_b <= 1'b1;
-        spi_sck <= 1'b1;
+        spi_cs_b = 1'b1;
+        spi_sck = 1'b1;
 
         if (spi_start_new_xfr) begin
-          spi_state_next <= SPI_END;
-          reset_spi_bit_counter <= 1'b1;
+          spi_state_next = SPI_END;
+          reset_spi_bit_counter = 1'b1;
 
         end else begin
-          spi_state_next <= SPI_IDLE;
+          spi_state_next = SPI_IDLE;
         end
       end
 
       SPI_START : begin
-        spi_cs_b <= 1'b0;
-        spi_sck <= 1'b1;
+        spi_cs_b = 1'b0;
+        spi_sck = 1'b1;
 
         if (spi_has_more_out_bytes) begin
-          get_spi_out_data <= 1'b1;
-          spi_state_next <= SPI_SEND_BIT;
+          get_spi_out_data = 1'b1;
+          spi_state_next = SPI_SEND_BIT;
           
         end else if (spi_has_more_in_bytes || spi_dir_transition) begin
-          spi_state_next <= SPI_SEND_BIT;
+          spi_state_next = SPI_SEND_BIT;
 
         end else begin
-          spi_state_next <= SPI_START;
+          spi_state_next = SPI_START;
         end
       end
 
       SPI_SEND_BIT : begin
-        spi_cs_b <= 1'b0;
-        spi_sck <= 1'b1;
-        spi_send_bit <= 1'b1;
+        spi_cs_b = 1'b0;
+        spi_sck = 1'b1;
+        spi_send_bit = 1'b1;
 
-        spi_state_next <= SPI_GET_BIT;
+        spi_state_next = SPI_GET_BIT;
       end
 
 
       SPI_GET_BIT : begin
-        spi_cs_b <= 1'b0;
-        spi_sck <= 1'b0;
-        spi_get_bit <= 1'b1;
+        spi_cs_b = 1'b0;
+        spi_sck = 1'b0;
+        spi_get_bit = 1'b1;
 
         if (spi_byte_done) begin
-          update_spi_byte_counters <= 1'b1;
-          spi_state_next <= SPI_END;
+          update_spi_byte_counters = 1'b1;
+          spi_state_next = SPI_END;
 
         end else begin
-          spi_state_next <= SPI_SEND_BIT;
+          spi_state_next = SPI_SEND_BIT;
         end
       end
 
       SPI_END : begin
-        spi_cs_b <= 1'b0;
-        spi_sck <= 1'b1;
-        reset_spi_bit_counter <= 1'b1;
+        spi_cs_b = 1'b0;
+        spi_sck = 1'b1;
+        reset_spi_bit_counter = 1'b1;
 
         if (spi_has_more_out_bytes) begin
           if (spi_byte_out_xfr_ready) begin
-	    spi_state_next <= SPI_START;
+	    spi_state_next = SPI_START;
           end else begin
-	    spi_state_next <= SPI_END;
+	    spi_state_next = SPI_END;
           end
 
         end else if (spi_dir_transition) begin
-          spi_state_next <= SPI_START;
+          spi_state_next = SPI_START;
 
         end else if (spi_has_more_in_bytes) begin
           if (spi_byte_in_xfr_ready) begin
-            put_spi_in_data <= 1'b1;
-            spi_state_next <= SPI_START;
+            put_spi_in_data = 1'b1;
+            spi_state_next = SPI_START;
           end else begin
-            spi_state_next <= SPI_END;
+            spi_state_next = SPI_END;
           end
 
         end else if (spi_put_last_in_byte) begin
           if (spi_byte_in_xfr_ready) begin
-            put_spi_in_data <= 1'b1;
-            spi_state_next <= SPI_IDLE;
+            put_spi_in_data = 1'b1;
+            spi_state_next = SPI_IDLE;
           end else begin
-            spi_state_next <= SPI_END;
+            spi_state_next = SPI_END;
           end
 
         end else begin
-          spi_state_next <= SPI_IDLE;
+          spi_state_next = SPI_IDLE;
         end
       end
 
       default begin
-        spi_cs_b <= 1'b1;
-        spi_sck <= 1'b1;
-        spi_state_next <= SPI_IDLE;
+        spi_cs_b = 1'b1;
+        spi_sck = 1'b1;
+        spi_state_next = SPI_IDLE;
       end
     endcase    
   end

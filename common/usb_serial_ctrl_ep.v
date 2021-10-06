@@ -124,7 +124,6 @@ module usb_serial_ctrl_ep (
   assign in_ep_req = ctrl_xfr_state == DATA_IN && more_data_to_send;
   assign in_ep_data_put = ctrl_xfr_state == DATA_IN && more_data_to_send && in_ep_data_free;
 
-
   reg [6:0] rom_addr = 0;
 
   reg save_dev_addr = 0;
@@ -363,133 +362,141 @@ module usb_serial_ctrl_ep (
   end
 
 
-  `define CDC_ACM_ENDPOINT 2 
-  `define CDC_RX_ENDPOINT 1
-  `define CDC_TX_ENDPOINT 1
-	
-  reg [7:0] ep_rom[255:0];
-  assign in_ep_data = ep_rom[rom_addr];
 
-  initial begin
+  reg[7:0] rom;
+  
+  assign in_ep_data = rom;
+  `define CDC_ACM_ENDPOINT 'h2
+  `define CDC_RX_ENDPOINT 'h1
+  `define CDC_TX_ENDPOINT 'h1
+  `define MAX_IN_PACKET_SIZE 32
+  `define MAX_OUT_PACKET_SIZE 32
+
+
+  always @(rom_addr) begin
+    case (rom_addr)
       // device descriptor
-      ep_rom['h000] <= 18; // bLength
-      ep_rom['h001] <= 1; // bDescriptorType
-      ep_rom['h002] <= 'h00; // bcdUSB[0]
-      ep_rom['h003] <= 'h02; // bcdUSB[1]
-      ep_rom['h004] <= 'h02; // bDeviceClass (Communications Device Class)
-      ep_rom['h005] <= 'h00; // bDeviceSubClass (Abstract Control Model)
-      ep_rom['h006] <= 'h00; // bDeviceProtocol (No class specific protocol required)
-      ep_rom['h007] <= 32; // bMaxPacketSize0
+      'h000 : rom = 18; // bLength
+      'h001 : rom = 1; // bDescriptorType
+      'h002 : rom = 'h00; // bcdUSB[0]
+      'h003 : rom = 'h02; // bcdUSB[1]
+      'h004 : rom = 'h02; // bDeviceClass (Communications Device Class)
+      'h005 : rom = 'h00; // bDeviceSubClass (Abstract Control Model)
+      'h006 : rom = 'h00; // bDeviceProtocol (No class specific protocol required)
+      'h007 : rom = `MAX_IN_PACKET_SIZE; // bMaxPacketSize0
 
-      ep_rom['h008] <= 'h50; // idVendor[0] http://wiki.openmoko.org/wiki/USB_Product_IDs
-      ep_rom['h009] <= 'h1d; // idVendor[1]
-      ep_rom['h00A] <= 'h30; // idProduct[0]
-      ep_rom['h00B] <= 'h61; // idProduct[1]
-      
-      ep_rom['h00C] <= 0; // bcdDevice[0]
-      ep_rom['h00D] <= 0; // bcdDevice[1]
-      ep_rom['h00E] <= 0; // iManufacturer
-      ep_rom['h00F] <= 0; // iProduct
-      ep_rom['h010] <= 0; // iSerialNumber
-      ep_rom['h011] <= 1; // bNumConfigurations
+      'h008 : rom = 'h50; // idVendor[0] http://wiki.openmoko.org/wiki/USB_Product_IDs
+      'h009 : rom = 'h1d; // idVendor[1]
+      'h00A : rom = 'h30; // idProduct[0]
+      'h00B : rom = 'h61; // idProduct[1]
+
+      'h00C : rom = 0; // bcdDevice[0]
+      'h00D : rom = 0; // bcdDevice[1]
+      'h00E : rom = 0; // iManufacturer
+      'h00F : rom = 0; // iProduct
+      'h010 : rom = 0; // iSerialNumber
+      'h011 : rom = 1; // bNumConfigurations
 
       // configuration descriptor
-      ep_rom['h012] <= 9; // bLength
-      ep_rom['h013] <= 2; // bDescriptorType
-      ep_rom['h014] <= (9+9+5+5+4+5+7+9+7+7); // wTotalLength[0] 
-      ep_rom['h015] <= 0; // wTotalLength[1]
-      ep_rom['h016] <= 2; // bNumInterfaces
-      ep_rom['h017] <= 1; // bConfigurationValue
-      ep_rom['h018] <= 0; // iConfiguration
-      ep_rom['h019] <= 'hC0; // bmAttributes
-      ep_rom['h01A] <= 50; // bMaxPower
-      
-      // interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
-      ep_rom['h01B] <= 9; // bLength
-      ep_rom['h01C] <= 4; // bDescriptorType
-      ep_rom['h01D] <= 0; // bInterfaceNumber
-      ep_rom['h01E] <= 0; // bAlternateSetting
-      ep_rom['h01F] <= 1; // bNumEndpoints
-      ep_rom['h020] <= 2; // bInterfaceClass (Communications Device Class)
-      ep_rom['h021] <= 2; // bInterfaceSubClass (Abstract Control Model)
-      ep_rom['h022] <= 1; // bInterfaceProtocol (AT Commands: V.250 etc)
-      ep_rom['h023] <= 0; // iInterface
+      'h012 : rom = 9; // bLength
+      'h013 : rom = 2; // bDescriptorType
+      'h014 : rom = (9+9+5+5+4+5+7+9+7+7); // wTotalLength[0](ox43)
+      'h015 : rom = 0; // wTotalLength[1]
+      'h016 : rom = 2; // bNumInterfaces
+      'h017 : rom = 1; // bConfigurationValue
+      'h018 : rom = 0; // iConfiguration
+      'h019 : rom = 'hC0; // bmAttributes
+      'h01A : rom = 50; // bMaxPower
+
+      // CDC interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
+      'h01B : rom = 9; // bLength
+      'h01C : rom = 4; // bDescriptorType
+      'h01D : rom = 0; // bInterfaceNumber
+      'h01E : rom = 0; // bAlternateSetting
+      'h01F : rom = 1; // bNumEndpoints
+      'h020 : rom = 2; // bInterfaceClass (Communications Device Class)
+      'h021 : rom = 2; // bInterfaceSubClass (Abstract Control Model)
+      'h022 : rom = 0; // bInterfaceProtocol (0 = ?, 1 = AT Commands: V.250 etc)
+      'h023 : rom = 0; // iInterface
 
       // CDC Header Functional Descriptor, CDC Spec 5.2.3.1, Table 26
-      ep_rom['h024] <= 5;					// bFunctionLength
-	    ep_rom['h025] <= 'h24;					// bDescriptorType
-	    ep_rom['h026] <= 'h00;					// bDescriptorSubtype
-	    ep_rom['h027] <= 'h10; 
-      ep_rom['h028] <= 'h01;				// bcdCDC
+      'h024 : rom = 5;					// bFunctionLength
+	    'h025 : rom = 'h24;					// bDescriptorType
+	    'h026 : rom = 'h00;					// bDescriptorSubtype
+	    'h027 : rom = 'h10;
+      'h028 : rom = 'h01;				// bcdCDC
 
 	    // Call Management Functional Descriptor, CDC Spec 5.2.3.2, Table 27
-	    ep_rom['h029] <= 5;					// bFunctionLength
-	    ep_rom['h02A] <= 'h24;					// bDescriptorType
-	    ep_rom['h02B] <= 'h01;					// bDescriptorSubtype
-	    ep_rom['h02C] <= 'h00;					// bmCapabilities
-	    ep_rom['h02D] <= 1;					// bDataInterface
+	    'h029 : rom = 5;					// bFunctionLength
+	    'h02A : rom = 'h24;					// bDescriptorType
+	    'h02B : rom = 'h01;					// bDescriptorSubtype
+	    'h02C : rom = 'h00;					// bmCapabilities
+	    'h02D : rom = 1;					// bDataInterface
 
 	    // Abstract Control Management Functional Descriptor, CDC Spec 5.2.3.3, Table 28
-	    ep_rom['h02E] <= 4;					// bFunctionLength
-	    ep_rom['h02F] <= 'h24;					// bDescriptorType
-	    ep_rom['h030] <= 'h02;					// bDescriptorSubtype
-	    ep_rom['h031] <= 'h06;					// bmCapabilities
+	    'h02E : rom = 4;					// bFunctionLength
+	    'h02F : rom = 'h24;					// bDescriptorType
+	    'h030 : rom = 'h02;					// bDescriptorSubtype
+	    'h031 : rom = 'h06;					// bmCapabilities
 
 	    // Union Functional Descriptor, CDC Spec 5.2.3.8, Table 33
-    	ep_rom['h032] <= 5;					// bFunctionLength
-    	ep_rom['h033] <= 'h24;					// bDescriptorType
-    	ep_rom['h034] <= 'h06;					// bDescriptorSubtype
-    	ep_rom['h035] <= 0;					// bMasterInterface
-    	ep_rom['h036] <= 1;					// bSlaveInterface0
+    	'h032 : rom = 5;					// bFunctionLength
+    	'h033 : rom = 'h24;					// bDescriptorType
+    	'h034 : rom = 'h06;					// bDescriptorSubtype
+    	'h035 : rom = 0;					// bMasterInterface
+    	'h036 : rom = 1;					// bSlaveInterface0
 
     	// endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
-    	ep_rom['h037] <= 7;					// bLength
-    	ep_rom['h038] <= 5;					// bDescriptorType
-    	ep_rom['h039] <= `CDC_ACM_ENDPOINT | 'h80;		// bEndpointAddress
-    	ep_rom['h03A] <= 'h03;					// bmAttributes (0x03=intr)
-    	ep_rom['h03B] <= 8;     // wMaxPacketSize[0]
-      ep_rom['h03C] <= 0;			// wMaxPacketSize[1]
-    	ep_rom['h03D] <= 64;					// bInterval
+    	'h037 : rom = 7;					// bLength
+    	'h038 : rom = 5;					// bDescriptorType
+    	'h039 : rom = `CDC_ACM_ENDPOINT | 'h80;		// bEndpointAddress
+    	'h03A : rom = 'h03;					// bmAttributes (0x03=intr)
+    	'h03B : rom = 8;     // wMaxPacketSize[0]
+      'h03C : rom = 0;			// wMaxPacketSize[1]
+    	'h03D : rom = 'h0A;					// bInterval
 
     	// interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
-    	ep_rom['h03E] <= 9;					// bLength
-    	ep_rom['h03F] <= 4;					// bDescriptorType
-    	ep_rom['h040] <= 1;					// bInterfaceNumber
-    	ep_rom['h041] <= 0;					// bAlternateSetting
-    	ep_rom['h042] <= 2;					// bNumEndpoints
-    	ep_rom['h043] <= 'h0A;					// bInterfaceClass
-    	ep_rom['h044] <= 'h00;					// bInterfaceSubClass
-    	ep_rom['h045] <= 'h00;					// bInterfaceProtocol
-    	ep_rom['h046] <= 0;					// iInterface
+    	'h03E : rom = 9;					// bLength
+    	'h03F : rom = 4;					// bDescriptorType
+    	'h040 : rom = 1;					// bInterfaceNumber
+    	'h041 : rom = 0;					// bAlternateSetting
+    	'h042 : rom = 2;					// bNumEndpoints
+    	'h043 : rom = 'h0A;					// bInterfaceClass
+    	'h044 : rom = 'h00;					// bInterfaceSubClass
+    	'h045 : rom = 'h00;					// bInterfaceProtocol
+    	'h046 : rom = 0;					// iInterface
 
     	// endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
-    	ep_rom['h047] <= 7;					// bLength
-    	ep_rom['h048] <= 5;					// bDescriptorType
-    	ep_rom['h049] <= `CDC_RX_ENDPOINT;			// bEndpointAddress
-    	ep_rom['h04A] <= 'h02;					// bmAttributes (0x02=bulk)
-    	ep_rom['h04B] <= 32; // wMaxPacketSize[0]
-      ep_rom['h04C] <= 0;				// wMaxPacketSize[1]
-    	ep_rom['h04D] <= 0;					// bInterval
+    	'h047 : rom = 7;					// bLength
+    	'h048 : rom = 5;					// bDescriptorType
+    	'h049 : rom = `CDC_RX_ENDPOINT;			// bEndpointAddress
+    	'h04A : rom = 'h02;					// bmAttributes (0x02=bulk)
+    	'h04B : rom = `MAX_IN_PACKET_SIZE; // wMaxPacketSize[0]
+      'h04C : rom = 0;				// wMaxPacketSize[1]
+    	'h04D : rom = 0;					// bInterval
 
     	// endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
-    	ep_rom['h04E] <= 7;					// bLength
-    	ep_rom['h04F] <= 5;					// bDescriptorType
-    	ep_rom['h050] <= `CDC_TX_ENDPOINT | 'h80;			// bEndpointAddress
-    	ep_rom['h051] <= 'h02;					// bmAttributes (0x02=bulk)
-
-    	ep_rom['h052] <= 32; // wMaxPacketSize[0]
-      ep_rom['h053] <= 0;				// wMaxPacketSize[1]
-    	ep_rom['h054] <= 0;				// bInterval
+    	'h04E : rom = 7;					// bLength
+    	'h04F : rom = 5;					// bDescriptorType
+    	'h050 : rom = `CDC_TX_ENDPOINT | 'h80;			// bEndpointAddress
+    	'h051 : rom = 'h02;					// bmAttributes (0x02=bulk)
+      'h052 : rom = `MAX_OUT_PACKET_SIZE; // wMaxPacketSize[0]
+      'h053 : rom = 0;				// wMaxPacketSize[1]
+    	'h054 : rom = 0;				// bInterval
 
       // LINE_CODING
-      ep_rom['h055] <= 'h80; // dwDTERate[0]
-      ep_rom['h056] <= 'h25; // dwDTERate[1]
-      ep_rom['h057] <= 'h00; // dwDTERate[2]
-      ep_rom['h058] <= 'h00; // dwDTERate[3]
-      ep_rom['h059] <= 1; // bCharFormat (1 stop bit)
-      ep_rom['h05A] <= 0; // bParityType (None)
-      ep_rom['h05B] <= 8; // bDataBits (8 bits)
+      'h055 : rom = 'h80; // dwDTERate[0]
+      'h056 : rom = 'h25; // dwDTERate[1]
+      'h057 : rom = 'h00; // dwDTERate[2]
+      'h058 : rom = 'h00; // dwDTERate[3]
+      'h059 : rom = 1; // bCharFormat (1 stop bit)
+      'h05A : rom = 0; // bParityType (None)
+      'h05B : rom = 8; // bDataBits (8 bits)
 
+      default : rom = 0;
+	  
+    endcase
   end
+
 
 endmodule

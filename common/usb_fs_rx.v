@@ -161,18 +161,18 @@ module usb_fs_rx #(
     if (line_state_valid) begin
       // check for packet start: KJKJKK
       if (!packet_valid && line_history[5:0] == 6'b100101) begin
-        next_packet_valid <= 1;
+        next_packet_valid = 1;
       end
  
       // check for packet end: SE0 SE0
       else if (packet_valid && line_history[3:0] == 4'b0000) begin
-        next_packet_valid <= 0;
+        next_packet_valid = 0;
 
       end else begin
-        next_packet_valid <= packet_valid;
+        next_packet_valid = packet_valid;
       end
     end else begin
-      next_packet_valid <= packet_valid;
+      next_packet_valid = packet_valid;
     end
   end
 
@@ -203,23 +203,23 @@ module usb_fs_rx #(
 
   always @* begin
     case (line_history[3:0])
-      4'b0101 : din <= 1;
-      4'b0110 : din <= 0;
-      4'b1001 : din <= 0;
-      4'b1010 : din <= 1;
-      default : din <= 0;
+      4'b0101 : din = 1;
+      4'b0110 : din = 0;
+      4'b1001 : din = 0;
+      4'b1010 : din = 1;
+      default : din = 0;
     endcase
  
     if (packet_valid && line_state_valid) begin
       case (line_history[3:0])
-        4'b0101 : dvalid_raw <= 1;
-        4'b0110 : dvalid_raw <= 1;
-        4'b1001 : dvalid_raw <= 1;
-        4'b1010 : dvalid_raw <= 1;
-        default : dvalid_raw <= 0;
+        4'b0101 : dvalid_raw = 1;
+        4'b0110 : dvalid_raw = 1;
+        4'b1001 : dvalid_raw = 1;
+        4'b1010 : dvalid_raw = 1;
+        default : dvalid_raw = 0;
       endcase
     end else begin
-      dvalid_raw <= 0;
+      dvalid_raw = 0;
     end
   end
 

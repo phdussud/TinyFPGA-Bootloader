@@ -14,10 +14,10 @@ module usb_fs_out_arb #(
     grant = 0;
 
     for (i = 0; i < NUM_OUT_EPS; i = i + 1) begin
-      out_ep_grant[i] <= 0;
+      out_ep_grant[i] = 0;
 
       if (out_ep_req[i] && !grant) begin
-        out_ep_grant[i] <= 1;
+        out_ep_grant[i] = 1;
         grant = 1;
       end
     end

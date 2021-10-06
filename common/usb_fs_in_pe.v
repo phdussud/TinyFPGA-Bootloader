@@ -164,17 +164,17 @@ module usb_fs_in_pe #(
   generate
     for (ep_num = 0; ep_num < NUM_IN_EPS; ep_num = ep_num + 1) begin
       always @* begin
-        in_ep_acked[ep_num] <= 0;
+        in_ep_acked[ep_num] = 0;
 
-        ep_state_next[ep_num] <= ep_state[ep_num];
+        ep_state_next[ep_num] = ep_state[ep_num];
 
         if (in_ep_stall[ep_num]) begin
-          ep_state_next[ep_num] <= STALL;
+          ep_state_next[ep_num] = STALL;
 
         end else begin
           case (ep_state[ep_num])
             READY_FOR_PKT : begin
-              ep_state_next[ep_num] <= PUTTING_PKT;
+              ep_state_next[ep_num] = PUTTING_PKT;
             end
 
             PUTTING_PKT : begin
@@ -185,34 +185,34 @@ module usb_fs_in_pe #(
                   ep_put_addr[ep_num][5]
                 )
               ) begin
-                ep_state_next[ep_num] <= GETTING_PKT;
+                ep_state_next[ep_num] = GETTING_PKT;
 
               end else begin
-                ep_state_next[ep_num] <= PUTTING_PKT;
+                ep_state_next[ep_num] = PUTTING_PKT;
               end
             end
 
             GETTING_PKT : begin
               if (in_xfr_end && current_endp == ep_num) begin
-                ep_state_next[ep_num] <= READY_FOR_PKT;
-                in_ep_acked[ep_num] <= 1;
+                ep_state_next[ep_num] = READY_FOR_PKT;
+                in_ep_acked[ep_num] = 1;
                 
               end else begin
-                ep_state_next[ep_num] <= GETTING_PKT;
+                ep_state_next[ep_num] = GETTING_PKT;
               end
             end
 
             STALL : begin
               if (setup_token_received && rx_endp == ep_num) begin
-                ep_state_next[ep_num] <= READY_FOR_PKT;
+                ep_state_next[ep_num] = READY_FOR_PKT;
 
               end else begin
-                ep_state_next[ep_num] <= STALL;
+                ep_state_next[ep_num] = STALL;
               end
             end
 
             default begin
-              ep_state_next[ep_num] <= READY_FOR_PKT;
+              ep_state_next[ep_num] = READY_FOR_PKT;
             end
           endcase
         end
@@ -223,19 +223,19 @@ module usb_fs_in_pe #(
 
       always @(posedge clk) begin
         if (reset || reset_ep[ep_num]) begin
-          ep_state[ep_num] <= READY_FOR_PKT;
+          ep_state[ep_num] = READY_FOR_PKT;
 
         end else begin
-          ep_state[ep_num] <= ep_state_next[ep_num];
+          ep_state[ep_num] = ep_state_next[ep_num];
 
           case (ep_state[ep_num])
             READY_FOR_PKT : begin
-              ep_put_addr[ep_num][5:0] <= 0;
+              ep_put_addr[ep_num][5:0] = 0;
             end
 
             PUTTING_PKT : begin
               if (in_ep_data_put[ep_num]) begin
-                ep_put_addr[ep_num][5:0] <= ep_put_addr[ep_num][5:0] + 1;
+                ep_put_addr[ep_num][5:0] = ep_put_addr[ep_num][5:0] + 1;
               end
             end
 
@@ -252,11 +252,11 @@ module usb_fs_in_pe #(
 
   integer ep_num_decoder;
   always @* begin
-    in_ep_num <= 0;
+    in_ep_num = 0;
 
     for (ep_num_decoder = 0; ep_num_decoder < NUM_IN_EPS; ep_num_decoder = ep_num_decoder + 1) begin
       if (in_ep_data_put[ep_num_decoder]) begin
-        in_ep_num <= ep_num_decoder; 
+        in_ep_num = ep_num_decoder; 
       end
     end
   end
@@ -279,70 +279,70 @@ module usb_fs_in_pe #(
   reg rollback_in_xfr;
 
   always @* begin
-    in_xfr_state_next <= in_xfr_state;
-    in_xfr_start <= 0;
-    in_xfr_end <= 0;
-    tx_pkt_start <= 0;
-    tx_pid <= 4'b0000;
-    rollback_in_xfr <= 0;
+    in_xfr_state_next = in_xfr_state;
+    in_xfr_start = 0;
+    in_xfr_end = 0;
+    tx_pkt_start = 0;
+    tx_pid = 4'b0000;
+    rollback_in_xfr = 0;
 
     case (in_xfr_state)
       IDLE : begin
-        rollback_in_xfr <= 1;
+        rollback_in_xfr = 1;
 
         if (in_token_received) begin
-          in_xfr_state_next <= RCVD_IN;
+          in_xfr_state_next = RCVD_IN;
 
         end else begin
-          in_xfr_state_next <= IDLE;
+          in_xfr_state_next = IDLE;
         end 
       end
 
 
       RCVD_IN : begin
-        tx_pkt_start <= 1;
+        tx_pkt_start = 1;
 
         if (ep_state[current_endp] == STALL) begin
-          in_xfr_state_next <= IDLE;
-          tx_pid <= 4'b1110; // STALL
+          in_xfr_state_next = IDLE;
+          tx_pid = 4'b1110; // STALL
 
         end else if (ep_state[current_endp] == GETTING_PKT) begin
-          in_xfr_state_next <= SEND_DATA;
-          tx_pid <= {data_toggle[current_endp], 3'b011}; // DATA0/1
-          in_xfr_start <= 1;
+          in_xfr_state_next = SEND_DATA;
+          tx_pid = {data_toggle[current_endp], 3'b011}; // DATA0/1
+          in_xfr_start = 1;
 
         end else begin
-          in_xfr_state_next <= IDLE;
-          tx_pid <= 4'b1010; // NAK
+          in_xfr_state_next = IDLE;
+          tx_pid = 4'b1010; // NAK
         end
       end
 
 
       SEND_DATA : begin
         if (!more_data_to_send) begin
-          in_xfr_state_next <= WAIT_ACK;
+          in_xfr_state_next = WAIT_ACK;
 
         end else begin
-          in_xfr_state_next <= SEND_DATA;
+          in_xfr_state_next = SEND_DATA;
         end
       end
 
       WAIT_ACK : begin
         // FIXME: need to handle smash/timeout
         if (ack_received) begin
-          in_xfr_state_next <= IDLE;
-          in_xfr_end <= 1;
+          in_xfr_state_next = IDLE;
+          in_xfr_end = 1;
 
         end else if (in_token_received) begin
-          in_xfr_state_next <= RCVD_IN;
-          rollback_in_xfr <= 1;
+          in_xfr_state_next = RCVD_IN;
+          rollback_in_xfr = 1;
 
         end else if (rx_pkt_end) begin
-          in_xfr_state_next <= IDLE;
-          rollback_in_xfr <= 1;
+          in_xfr_state_next = IDLE;
+          rollback_in_xfr = 1;
 
         end else begin
-          in_xfr_state_next <= WAIT_ACK;
+          in_xfr_state_next = WAIT_ACK;
         end
       end
     endcase

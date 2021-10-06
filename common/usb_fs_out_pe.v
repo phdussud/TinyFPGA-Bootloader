@@ -266,11 +266,11 @@ module usb_fs_out_pe #(
 
   integer ep_num_decoder;
   always @* begin
-    out_ep_num <= 0;
+    out_ep_num = 0;
 
     for (ep_num_decoder = 0; ep_num_decoder < NUM_OUT_EPS; ep_num_decoder = ep_num_decoder + 1) begin
       if (out_ep_data_get[ep_num_decoder]) begin
-        out_ep_num <= ep_num_decoder; 
+        out_ep_num = ep_num_decoder; 
       end
     end
   end
@@ -280,75 +280,75 @@ module usb_fs_out_pe #(
   ////////////////////////////////////////////////////////////////////////////////
 
   always @* begin
-    out_ep_acked <= 0;
-    out_xfr_start <= 0;
-    out_xfr_state_next <= out_xfr_state;
-    tx_pkt_start <= 0;
-    tx_pid <= 0;
-    new_pkt_end <= 0;
-    rollback_data <= 0;
+    out_ep_acked = 0;
+    out_xfr_start = 0;
+    out_xfr_state_next = out_xfr_state;
+    tx_pkt_start = 0;
+    tx_pid = 0;
+    new_pkt_end = 0;
+    rollback_data = 0;
 
     case (out_xfr_state)
       IDLE : begin
         if (out_token_received || setup_token_received) begin
-          out_xfr_state_next <= RCVD_OUT;
-          out_xfr_start <= 1;
+          out_xfr_state_next = RCVD_OUT;
+          out_xfr_start = 1;
         end else begin
-          out_xfr_state_next <= IDLE;
+          out_xfr_state_next = IDLE;
         end
       end
 
       RCVD_OUT : begin
         if (rx_pkt_start) begin
-          out_xfr_state_next <= RCVD_DATA_START;
+          out_xfr_state_next = RCVD_DATA_START;
         end else begin
-          out_xfr_state_next <= RCVD_OUT;
+          out_xfr_state_next = RCVD_OUT;
         end
       end
 
       RCVD_DATA_START : begin
         if (bad_data_toggle) begin
-          out_xfr_state_next <= IDLE;
-          rollback_data <= 1;
-          tx_pkt_start <= 1;
-          tx_pid <= 4'b0010; // ACK
+          out_xfr_state_next = IDLE;
+          rollback_data = 1;
+          tx_pkt_start = 1;
+          tx_pid = 4'b0010; // ACK
 
         end else if (invalid_packet_received || non_data_packet_received) begin
-          out_xfr_state_next <= IDLE;
-          rollback_data <= 1;
+          out_xfr_state_next = IDLE;
+          rollback_data = 1;
 
         end else if (data_packet_received) begin
-          out_xfr_state_next <= RCVD_DATA_END;
+          out_xfr_state_next = RCVD_DATA_END;
 
         end else begin
-          out_xfr_state_next <= RCVD_DATA_START;
+          out_xfr_state_next = RCVD_DATA_START;
         end
       end
 
       RCVD_DATA_END : begin
-        out_xfr_state_next <= IDLE;
-        tx_pkt_start <= 1;
+        out_xfr_state_next = IDLE;
+        tx_pkt_start = 1;
 
         if (ep_state[current_endp] == STALL) begin
-          tx_pid <= 4'b1110; // STALL
+          tx_pid = 4'b1110; // STALL
 
         end else if (nak_out_transfer) begin
-          tx_pid <= 4'b1010; // NAK
-          rollback_data <= 1;
+          tx_pid = 4'b1010; // NAK
+          rollback_data = 1;
 
         end else begin
-          tx_pid <= 4'b0010; // ACK
-          new_pkt_end <= 1;
-          out_ep_acked[current_endp] <= 1;
+          tx_pid = 4'b0010; // ACK
+          new_pkt_end = 1;
+          out_ep_acked[current_endp] = 1;
 
         //end else begin
-        //  tx_pid <= 4'b0010; // ACK
-        //  rollback_data <= 1;
+        //  tx_pid = 4'b0010; // ACK
+        //  rollback_data = 1;
         end
       end
 
       default begin
-        out_xfr_state_next <= IDLE;
+        out_xfr_state_next = IDLE;
       end
     endcase
   end
